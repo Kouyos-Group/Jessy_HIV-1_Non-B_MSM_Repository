@@ -17,11 +17,9 @@ pacman::p_load("dplyr","tidyr", "data.table", "gmodels", "tidyverse", "boot", "t
 
 ### Load the data
 setwd("~/Desktop/SHCS")
+data <- read.csv("Output/fulltable_study_population.csv")
 data <- read.csv("Output/fulltable_study_population_update.csv")
-#data <- read.csv("Output/real_studypopulation_FEB21.csv")
-data <- data[,-1] #12852
-
-
+data <- data[,-1] #11 168 
 
 
 ## Dates as dates
@@ -193,6 +191,15 @@ FUN_center_cat <- function(x){
 NB$center_cat <- sapply(NB$center1, FUN_center_cat)
 
 
+FUN_center_cat1 <- function(x){
+  if (is.na(x)){return (NA)}
+  else if (x == 10){return("Zurich")}
+  else if (x != 10){return("not-Zurich")}
+}
+
+NB$center_cat1 <- sapply(NB$center1, FUN_center_cat1)
+
+
 
 FUN_CD4_diag <- function(x){
   if (is.na(x)){return(NA)}
@@ -211,15 +218,12 @@ FUN_age_diag_cat <- function(x){
   else if (x >= 35){return("≥35")}
   else return(NA)
 }
-NB$age_diag_cat <- sapply(NB$age_at_diag, FUN_age_diag_cat)
+NB$age_diag_cat <- sapply(NB$age_at_diag, FUN_CD4_diag)
 
 
 ## better labels and units:
-label(NB$gender) <- "Gender"
-label(NB$risk) <- "Risk group"
 label(NB$age)       <- "Age"; units(NB$age)       <- "years"
 label(NB$age_at_diag) <- "Age at diagnosis"; units(NB$age_at_diag)     <- "years"
-label(NB$age_diag_cat) <- "Age at diagnosis"; units(NB$age_at_diag)     <- "years"
 label(NB$copyregion) <- "Geographic region of origin" 
 label(NB$groupedregion) <-"Geographic region of origin"
 label(NB$regroupedregion) <-"Geographic region of origin"
@@ -230,11 +234,6 @@ label(NB$diag_year) <- "Year of diagnosis"
 label(NB$cd4_diag) <- "CD4 cell counts at diagnosis"
 label(NB$known_swiss_infect) <- "Infection place";
 label(NB$edu) <- "Education"
-label(NB$cd4_diag) <- "CD4 count at diagnosis";  units(NB$cd4_diag)       <- "cells/µL"
-label(NB$cd4_diag_per200) <- "CD4 count at diagnosis";  units(NB$cd4_diag_per200)       <- "cells/200µL"
-label(NB$log_mean_rna) <- "Viral Load";  units(NB$log_mean_rna)       <- "Log10 copies/ml"
-label(NB$log_mean_rna_corrected) <- "Viral Load";  units(NB$log_mean_rna_corrected)       <- "Log10 copies/ml"
-
 
 
 # ## better labels and units:
@@ -254,7 +253,6 @@ label(NB$log_mean_rna_corrected) <- "Viral Load";  units(NB$log_mean_rna_correct
 rndr <- function(x, name, ...) {
   if (!is.numeric(x)) return(render.categorical.default(x))
   what <- switch(name,
-                 gender ="",
                  risk = "",
                  ethnicity = "",
                  copyregion = "",
@@ -264,27 +262,19 @@ rndr <- function(x, name, ...) {
                  age_at_diag = "Median [Q1,Q3]",
                  center_cat = "",
                  diag_year = "Median [Q1,Q3]",
-                 age_diag_cat ="",
                  cd4_diag = "Median [Q1,Q3]",
-                 cd4_diag_per200= "Median [Q1,Q3]",
-                 log_mean_rna =  "Median [Q1,Q3]",
-                 log_mean_rna_corrected = "Median [Q1,Q3]",
                  known_swiss_infect = "",
                  edu = "")
   #age_sampledate = "Median [Min,Max]")
   parse.abbrev.render.code(c("", what))(x)
 }
-NB$cd
 
-
-tab <- table1(~ age + age_at_diag + age_diag_cat+
+tab <- table1(~ age + age_at_diag + 
                 center_cat + ethnicity + regroupedregion +
                 known_swiss_infect +
                 edu+
-                # cd4_diag +
-              cd4_diag_per200+
+                cd4_diag 
               #diag_year
-                log_mean_rna
               | copy_subtype , 
               data = NB, overall="Total",
               render=rndr, 
@@ -294,68 +284,29 @@ tab <- table1(~ age + age_at_diag + age_diag_cat+
               caption = "<h3><b> Table 1. Patient characteristics and associations with subtype </b></h3>")
 print(tab)
 
-
-
-
-NB1 <- NB
-NB1<- NB1 %>%
-  mutate(subtypesNEW=case_when(
-    NB1$subtype=="B"  ~ "B",
-    NB1$subtype %in% c("A","C","F","G","01_AE","02_AG") ~ "Non-B")) #11 168
-select <- which(is.na(NB1$subtypesNEW))
-NB1$subtypesNEW[select] <- "Others"
-
-table(NB1$subtypesNEW)
-# B  Non-B Others 
-# 9512   2634    706 
-# > 9512+2634
-# [1] 12146
-# > 12146+706
-# [1] 12852
-
-
-
-tabNEW <- table1(~ 
-                   gender+
-                   risk+
-                   # age + 
-                   age_at_diag + 
-                   age_diag_cat+
-                center_cat + ethnicity + regroupedregion +
-                # known_swiss_infect +
-                # edu+
-                  # cd4_diag +
-                  cd4_diag_per200+
-                  #diag_year
-                  log_mean_rna
-              #diag_year
-              | subtypesNEW , 
-              data = NB1, overall="Total",
-              render=rndr, 
-              rowlabelhead = "Variables", 
-              footnote = "<b>NOTE</b> All numbers are no. (%) unless otherwise stated, All modes of HIV transmission (n = 11168)<br/>
-                Non-B: A, CRF01_AE, CRF02_AG, C, D, F, G <br/>
-                Others: Other subtypes, CRFs and unrecognized recombinants",
-              caption = "<h3><b> Table 1. Patient characteristics and associations with subtype </b></h3>")
-print(tabNEW)
+NB$cd4_diag_per200
 
 #######################################
-#MSM Table
-MSM <- data[data$risk == "1",]  #5694
-library(tidyr)
-MSM <- MSM %>% drop_na(id) #5215
 
+table(data$risk)
+# 1    2    3    5 
+# 4351 3923 2392  102 
+
+#HETTable
+HET <- data[data$risk == "2",]  #3923
+library(tidyr)
+HET <- HET %>% drop_na(id)
 
 
 #######################################
 ##change the levels:
-MSM$ethnicity <- factor(MSM$ethnicity, levels=c(1,2,3,4),
+HET$ethnicity <- factor(HET$ethnicity, levels=c(1,2,3,4),
                        labels=c("White", 
                                 "Black", #rest non-whites!
                                 "Hispanic",
                                 "Asian"))
 
-MSM$copyregion <- factor(MSM$region, levels=c(39,
+HET$copyregion <- factor(HET$region, levels=c(39,
                                                 11,
                                                 14,
                                                 5,
@@ -394,7 +345,7 @@ FUN_Switzerland <- function(x){
   else if (x == 2){return("Not-Swiss")}
   else if (x == 3){return("Not-Swiss")}
 }
-MSM$known_swiss_infect <- sapply(MSM$infect_place, FUN_Switzerland)
+HET$known_swiss_infect <- sapply(HET$infect_place, FUN_Switzerland)
 #MSM <- within(MSM, known_swiss_infect <- relevel(known_swiss_infect , ref = "Swiss"))
 
 
@@ -408,17 +359,30 @@ FUN_edu <- function (x){
   else {return(NA)}
 } ## values: not completed  school, mandatory school, apprentiship, higher education,  unkown
 
-MSM$edu <- sapply(MSM$education, FUN_edu) 
+HET$edu <- sapply(HET$education, FUN_edu) 
 
 
+# 	Cohort-center: document PAT, 
+#   	values: recruitment center (10 Zurich,20 Basel, 30 Bern, 40 Geneva, 50 Lausanne, 60 Lugano, 70 St.Gallen) 
+FUN_center_cat <- function(x){
+  if (is.na(x)){return (NA)}
+  else if (x == 10){return("Zurich")}
+  else if (x == 20){return("Basel")}
+  else if (x == 30){return("Bern")}
+  else if (x == 40){return("Geneva")}
+  else if (x == 50){return("Lausanne")}
+  else if (x == 60){return("Lugano")}
+  else if (x == 70){return("St.Gallen")}
+}
+
+HET$center_cat <- sapply(HET$center1, FUN_center_cat)
 
 FUN_center_cat1 <- function(x){
   if (is.na(x)){return (NA)}
   else if (x == 10){return("Zurich")}
   else if (x != 10){return("not-Zurich")}
 }
-
-MSM$center_cat1 <- sapply(MSM$center1, FUN_center_cat1)
+HET$center_cat1 <- sapply(HET$center1, FUN_center_cat1)
 
 
 
@@ -429,7 +393,7 @@ FUN_CD4_diag <- function(x){
   else if (x >= 500){return("≥500")}
   else return(NA)
 }
-MSM$cd4_diag_cat <- sapply(MSM$cd4_diag, FUN_CD4_diag)
+HET$cd4_diag_cat <- sapply(HET$cd4_diag, FUN_CD4_diag)
 
 
 FUN_age_diag_cat <- function(x){
@@ -439,28 +403,28 @@ FUN_age_diag_cat <- function(x){
   else if (x >= 35){return("≥35")}
   else return(NA)
 }
-MSM$age_diag_cat <- sapply(MSM$age_at_diag, FUN_CD4_diag)
+HET$age_diag_cat <- sapply(HET$age_at_diag, FUN_age_diag_cat)
 
 
 
 
 ## better labels and units:
-label(MSM$age)       <- "Age"; units(MSM$age)       <- "years"
-label(MSM$age_at_diag) <- "Age at diagnosis"; units(MSM$age_at_diag)     <- "years"
-label(MSM$copyregion) <- "Geographic region of origin" 
-label(MSM$groupedregion) <-"Geographic region of origin"
-label(MSM$regroupedregion) <-"Geographic region of origin"
-label(MSM$ethnicity) <- "Ethnicity"
-label(MSM$center_cat1) <- "Cohort Center "
-label(MSM$center_cat) <- "Cohort Center "
-MSM$diag_year <- as.integer(MSM$diag_year)
-label(MSM$diag_year) <- "Year of diagnosis"
-label(MSM$cd4_diag) <- "CD4 count at diagnosis";  units(MSM$cd4_diag)       <- "cells per µl blood"
-label(MSM$cd4_diag_per200) <- "CD4 count at diagnosis";  units(MSM$cd4_diag_per200)       <- "cells per 200 µl blood"
-label(MSM$log_mean_rna) <- "Viral Load";  units(MSM$log_mean_rna)       <- "Log10 copies/ml"
-label(MSM$log_mean_rna_corrected) <- "Viral Load";  units(MSM$log_mean_rna_corrected)       <- "Log10 copies/ml"
-label(MSM$known_swiss_infect) <- "Infection place";
-label(MSM$edu) <- "Education"
+label(HET$age)       <- "Age"; units(HET$age)       <- "years"
+label(HET$age_at_diag) <- "Age at diagnosis"; units(HET$age_at_diag)     <- "years"
+label(HET$copyregion) <- "Geographic region of origin" 
+label(HET$groupedregion) <-"Geographic region of origin"
+label(HET$regroupedregion) <-"Geographic region of origin"
+label(HET$ethnicity) <- "Ethnicity"
+label(HET$center_cat) <- "Cohort Center "
+HET$diag_year <- as.integer(HET$diag_year)
+label(HET$diag_year) <- "Year of diagnosis"
+label(HET$cd4_diag) <- "CD4 count at diagnosis";  units(HET$cd4_diag)       <- "cells per µl blood"
+label(HET$cd4_diag_per200) <- "CD4 count at diagnosis";  units(HET$cd4_diag_per200)       <- "cells per 200 µl blood"
+label(HET$log_mean_rna) <- "Viral Load";  units(HET$log_mean_rna)       <- "Log10 copies/ml"
+label(HET$log_mean_rna_corrected) <- "Viral Load";  units(HET$log_mean_rna_corrected)       <- "Log10 copies/ml"
+
+label(HET$known_swiss_infect) <- "Infection place";
+label(HET$edu) <- "Education"
 
 
 
@@ -478,6 +442,29 @@ label(MSM$edu) <- "Education"
 # label(MSM$edu) <- "Education";units(MSM$edu)       <- "%"
 
 
+rndr <- function(x, name, ...) {
+  if (!is.numeric(x)) return(render.categorical.default(x))
+  what <- switch(name,
+                 gender ="",
+                 risk = "",
+                 ethnicity = "",
+                 copyregion = "",
+                 regroupedregion = "",
+                 age = "Median [Q1,Q3]",
+                 age_sampledate = "Mean ± SD",
+                 age_at_diag = "Median [Q1,Q3]",
+                 center_cat = "",
+                 diag_year = "Median [Q1,Q3]",
+                 age_diag_cat ="",
+                 cd4_diag = "Median [Q1,Q3]",
+                 cd4_diag_per200= "Median [Q1,Q3]",
+                 log_mean_rna =  "Median [Q1,Q3]",
+                 log_mean_rna_corrected = "Median [Q1,Q3]",
+                 known_swiss_infect = "",
+                 edu = "")
+  #age_sampledate = "Median [Min,Max]")
+  parse.abbrev.render.code(c("", what))(x)
+}
 
 tab2 <- table1(~ 
                  # age + 
@@ -485,147 +472,107 @@ tab2 <- table1(~
                  center_cat + ethnicity + regroupedregion +
                  # known_swiss_infect +
                  # edu+
-                 cd4_diag_per200+
+                 cd4_diag +
                  log_mean_rna
                  # diag_year
                | copy_subtype , 
-               data = MSM, overall="Total",
+               data = HET, overall="Total",
                render=rndr, 
                rowlabelhead = "Variables", 
-               footnote = "<b>NOTE</b> All numbers are no. (%) unless otherwise stated, Homosexual contacts only (n = 4351)<br/>
+               footnote = "<b>NOTE</b> All numbers are no. (%) unless otherwise stated, HETs only (n = 3923)<br/>
                Non-B: A, C, D, F, G, CRF01_AE, CRF02_AG, other CRFs and unrecognized recombinants",
-               caption = "<h3><b> Table 1. MSM characteristics and associations with subtype </b></h3>")
+               caption = "<h3><b> Table 1. Patient characteristics and associations with subtype</b></h3>")
 print(tab2)
 
 
-
-
-MSM2 <- MSM %>%
+HET2 <- HET %>%
   mutate(subtypesNEW=case_when(
-    MSM$subtype=="B"  ~ "B",
-    MSM$subtype %in% c("A","C","F","G","01_AE","02_AG") ~ "Non-B")) #11 168
-select <- which(is.na(MSM2$subtypesNEW))
-MSM2$subtypesNEW[select] <- "Others"
+    HET$subtype=="B"  ~ "B",
+    HET$subtype %in% c("A","C","F","G","01_AE","02_AG") ~ "Non-B")) #11 168
+select <- which(is.na(HET2$subtypesNEW))
+HET2$subtypesNEW[select] <- "Others"
 
 
 tab2NEW <- table1(~ 
-                 # age + 
-                 age_at_diag + 
-                 center_cat + ethnicity + regroupedregion +
-                 # known_swiss_infect +
-                 # edu+
-                 cd4_diag_per200+
-                 log_mean_rna
-               # diag_year
-               | subtypesNEW , 
-               data = MSM2, overall="Total",
-               render=rndr, 
-               rowlabelhead = "Variables", 
-               footnote = "<b>NOTE</b> All numbers are no. (%) unless otherwise stated, MSM only (n = 4351)<br/>
+                    # age + 
+                    age_at_diag + 
+                    center_cat + ethnicity + regroupedregion +
+                    # known_swiss_infect +
+                    # edu+
+                    cd4_diag_per200+
+                    log_mean_rna
+                  # diag_year
+                  | subtypesNEW , 
+                  data = HET2, overall="Total",
+                  render=rndr, 
+                  rowlabelhead = "Variables", 
+                  footnote = "<b>NOTE</b> All numbers are no. (%) unless otherwise stated, HETs only (n = 3923)<br/>
                Non-B: A, C, D, F, G, CRF01_AE, CRF02_AG<br/>
                Others: Other subtypes, CRFs and unrecognized recombinants",
-               caption = "<h3><b> Table 1. MSM characteristics and associations with subtype</b></h3>")
+                  caption = "<h3><b> Table 1. HETs characteristics and associations with subtype</b></h3>")
 print(tab2NEW)
 
 
 
-
-MSM_BnonB <- filter(MSM2, subtype=="A" | subtype=="02_AG" 
-                   | subtype=="C" | subtype=="01_AE"
-                   | subtype=="F" | subtype=="G"| subtype =="B") 
+HET_BnonB <- filter(HET2, subtype=="A" | subtype=="02_AG" 
+                    | subtype=="C" | subtype=="01_AE"
+                    | subtype=="F" | subtype=="G"| subtype =="B") 
 
 tab3NEW <- table1(~ 
                     # age + 
                     age_at_diag + 
-                    center_cat + ethnicity + regroupedregion +
+                    center_cat1 + ethnicity + regroupedregion +
                     # known_swiss_infect +
                     # edu+
-                    cd4_diag_per200+
+                    cd4_diag+
+                    #cd4_diag_per200 +
                     log_mean_rna
                   # diag_year
                   | subtypesNEW , 
-                  data = MSM_BnonB, overall="Total",
+                  data = HET_BnonB, overall="Total",
                   render=rndr, 
                   rowlabelhead = "Variables", 
-                  footnote = "<b>NOTE</b> All numbers are no. (%) unless otherwise stated, MSM only (n = 5114)<br/>
+                  footnote = "<b>NOTE</b> All numbers are no. (%) unless otherwise stated, HETs only (n = 4076)<br/>
                Non-B: A, C, D, F, G, CRF01_AE, CRF02_AG<br/>
                Others: Other subtypes, CRFs and unrecognized recombinants",
-                  caption = "<h3><b> Table 1. MSM characteristics and associations with subtype</b></h3>")
+                  caption = "<h3><b> Table 1. HETs characteristics and associations with subtype</b></h3>")
 print(tab3NEW)
 
 
-tab3_cd4new <- table1(~ 
-                        # age + 
-                        age_at_diag + 
-                        center_cat + ethnicity + regroupedregion +
-                        # known_swiss_infect +
-                        # edu+
-                        cd4_diag+
-                        log_mean_rna
-                      # diag_year
-                      | subtypesNEW , 
-                      data = MSM_BnonB, overall="Total",
-                      render=rndr, 
-                      rowlabelhead = "Variables", 
-                      footnote = "<b>NOTE</b> All numbers are no. (%) unless otherwise stated, MSM only (n = 5114)<br/>
-               Non-B: A, C, D, F, G, CRF01_AE, CRF02_AG<br/>",
-                      caption = "<h3><b> Table 1. MSM characteristics and associations with subtype</b></h3>")
-print(tab3_cd4new)
-
-
-MSM_BnonB$center_cat <- sapply(MSM_BnonB$center1, FUN_center_cat)
+HET_BnonB$center_cat1 <- sapply(HET_BnonB$center1, FUN_center_cat)
 tab3NEW_cond <- table1(~ 
-                    # age + 
-                    age_at_diag + 
-                    center_cat + ethnicity + regroupedregion +
-                    # known_swiss_infect +
-                    # edu+
-                    cd4_diag_per200+
-                    log_mean_rna
-                  # diag_year
-                  | subtypesNEW , 
-                  data = MSM_BnonB, overall="Total",
-                  render=rndr, 
-                  rowlabelhead = "Variables", 
-                  footnote = "<b>NOTE</b> All numbers are no. (%) unless otherwise stated, MSM only (n = 5114)<br/>
+                         # age + 
+                         age_at_diag + 
+                         center_cat1 + ethnicity + regroupedregion +
+                         # known_swiss_infect +
+                         # edu+
+                         cd4_diag_per200 +
+                         log_mean_rna
+                       # diag_year
+                       | subtypesNEW , 
+                       data = HET_BnonB, overall="Total",
+                       render=rndr, 
+                       rowlabelhead = "Variables", 
+                       footnote = "<b>NOTE</b> All numbers are no. (%) unless otherwise stated, HETs only (n = 4076)<br/>
                Non-B: A, C, D, F, G, CRF01_AE, CRF02_AG<br/>
                Others: Other subtypes, CRFs and unrecognized recombinants",
-                  caption = "<h3><b> Table 1. MSM characteristics and associations with subtype</b></h3>")
+                       caption = "<h3><b> Table 1. HETs characteristics and associations with subtype</b></h3>")
 print(tab3NEW_cond)
 
 
+table1(~subtype , data = HET_BnonB)
 
 ################################
 
-#MSM Table 2
-MSM_NonB <- filter(MSM, subtype=="A" | subtype=="02_AG" 
-             | subtype=="C" | subtype=="01_AE"
-             | subtype=="F" | subtype=="G" )  ;unique(MSM_NonB$subtype) #310
-table1(~subtype , data = MSM_NonB)
+#HET Table 2
+HET_NonB <- filter(HET, subtype=="A" | subtype=="02_AG" 
+                   | subtype=="C" | subtype=="01_AE"
+                   | subtype=="F" | subtype=="G" )  ;unique(HET_NonB$subtype) #310
+table1(~subtype , data = HET_NonB)
 
-MSM_NonB$center_cat <- sapply(MSM_NonB$center1, FUN_center_cat)
 
 
 tab <- table1(~   # age + 
-                age_at_diag + 
-                #diag_year +
-                center_cat + ethnicity + regroupedregion +
-                # known_swiss_infect +
-                # edu+
-                # cd4_diag +
-                cd4_diag_per200+
-                log_mean_rna
-              # log_mean_rna_corrected
-              # diag_year
-              | subtype , 
-              data = MSM_NonB, overall="Total",
-              render=rndr, 
-              rowlabelhead = "Variables", 
-              footnote = "<b>NOTE</b> All numbers are no. (%) unless otherwise stated,  MSM only (n = 4204)",
-              caption = "<h3><b> Table 2. MSM Characteristics Infected With the 6 Most Frequently Observed Non-B Subtypes </b></h3>")
-print(tab)
-
-tab1 <- table1(~   # age + 
                 age_at_diag + 
                 center_cat1 + ethnicity + regroupedregion +
                 # known_swiss_infect +
@@ -636,11 +583,15 @@ tab1 <- table1(~   # age +
               # log_mean_rna_corrected
               # diag_year
               | subtype , 
-              data = MSM_NonB, overall="Total",
+              data = HET_NonB, overall="Total",
               render=rndr, 
               rowlabelhead = "Variables", 
-              footnote = "<b>NOTE</b> All numbers are no. (%) unless otherwise stated,  MSM only (n = 4204)",
-              caption = "<h3><b> Table 2. MSM Characteristics Infected With the 6 Most Frequently Observed Non-B Subtypes </b></h3>")
-print(tab1)
+              footnote = "<b>NOTE</b> All numbers are no. (%) unless otherwise stated,  HETs only (n = 4076)",
+              caption = "<h3><b> Table 2. HETs Characteristics Infected With the 6 Most Frequently Observed Non-B Subtypes </b></h3>")
+print(tab)
+
+
+
+
 
 

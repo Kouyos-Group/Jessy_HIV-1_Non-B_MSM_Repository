@@ -1,4 +1,4 @@
-#### MSM - Spline Regression
+#### HET - Spline Regression
 
 ## Clear R's memory
 rm(list=ls())
@@ -19,7 +19,8 @@ library(epiDisplay)
 
 ## load data
 setwd("~/Desktop/SHCS")
-data<- read.csv("Output/fulltable_study_population.csv")
+# data<- read.csv("Output/fulltable_study_population.csv")
+data <- read.csv("Output/fulltable_study_population_update.csv")
 data$X <-  NULL #does the same: data <- data[,-1]
 
 
@@ -38,7 +39,7 @@ table(data$subtype)
 ## Same for the 6 non-B subtypes with diagnosis year:
 #get non-B subpopulation: "A", "C", "F", "G", "CRF01_AE","CRFO2_AG"
 # nonB_data <- data[data$subtype != "B",] # 457 sequences
-nonB_data <-data[data$subtype %in% c("A", "C","F","G","01_AE","02_AG"),] # 310 in total 
+nonB_data <-data[data$subtype %in% c("A", "C","F","G","01_AE","02_AG"),] # 310 in total
 
 ################################
 FUN_nonB <- function(x){
@@ -53,9 +54,9 @@ data$nonB <- sapply(data$copy_subtype, FUN_nonB)
 #data$nonB <- factor(data$nonB, levels = c("B","Non-B"))
 
 
-# MSM!
-data <- data[data$risk == "1" ,] 
-data <- data[!(is.na(data$id)),] #4351
+# HET!
+data <- data[data$risk == "2" ,] 
+data <- data[!(is.na(data$id)),] #3923
 
 
 
@@ -87,22 +88,22 @@ require(splines)
 s3 <- glm(nonB ~ bs(diag_year, degree = 1, df=4), family = "binomial",data = data); summary(s3)
 attr(terms(s3), "predvars")
 # list(nonB, bs(diag_year, degree = 1L, 
-#knots = c(`25%` = 1993,  `50%` = 2001, `75%` = 2008), Boundary.knots = c(1982, 2020), 
+#knots = c(`25%` = 1995,  `50%` = 20010 `75%` = 2005), Boundary.knots = c(1982, 2020), 
 #               intercept = FALSE))
 termplot(s3, se=T)
 
 
 s4 <- glm(nonB ~ bs(diag_year, degree = 2, df=4), family = "binomial",data = data); summary(s3)
 attr(terms(s4), "predvars")
-# list(nonB, bs(diag_year, degree = 2L, knots = c(`33.33333%` = 1995, 
-#                                                 `66.66667%` = 2006), Boundary.knots = c(1982, 2020), intercept = FALSE))
+# list(nonB, bs(diag_year, degree = 2L, knots = c(`33.33333%` = 1996, 
+#                                                 `66.66667%` = 2003), Boundary.knots = c(1982, 2020), intercept = FALSE))
 termplot(s4, se=T)
 
 
 s5 <- glm(nonB ~ bs(diag_year, degree = 3, df=4), family = "binomial",data = data); summary(s3)
 attr(terms(s5), "predvars")
 # list(nonB, bs(diag_year, degree = 3L, knots = c(`50%` = 2001), 
-#               Boundary.knots = c(1982, 2020), intercept = FALSE))
+#               Boundary.knots = c(1981, 2019), intercept = FALSE))
 termplot(s5, se=T)
 
 
@@ -112,14 +113,14 @@ mod2 <- glm(nonB ~  ethnicity , family = "binomial",data = data)
 
 mod3 <- glm(nonB ~  regroupedregion , family = "binomial",data = data)
 
-test<- glm(nonB ~  diag_year  , family = "binomial",data = data)
+logistic<- glm(nonB ~  diag_year  , family = "binomial",data = data)
 # round(exp(coef(test)[2]),2) # 1.134967 OR 
-logistic.display(test) #1.13 (1.12,1.15)
+logistic.display(logistic) #1.09 (1.08,1.10)
 
 # get the likelihood ratio
-lmtest::lrtest (mod0,test)
+lmtest::lrtest (mod0,logistic)
 A <- logLik(mod0)
-B <- logLik(test)
+B <- logLik(logistic)
 teststat1 <- -2 * (as.numeric(A)-as.numeric(B))
 p.val1 <- pchisq(teststat1, df = 1, lower.tail = FALSE)
 
@@ -129,9 +130,9 @@ C<- logLik(s4)
 teststat2 <- -2 * (as.numeric(A)-as.numeric(C))
 p.val2 <- pchisq(teststat2, df = 4, lower.tail = FALSE)
 
-lmtest::lrtest (test,s4)
+lmtest::lrtest (logistic,s4)
 teststat3 <- -2 * (as.numeric(B)-as.numeric(C))
-p.val3 <- pchisq(teststat3, df = 3, lower.tail = FALSE)
+p.val3 <- pchisq(teststat3, df = 4, lower.tail = FALSE)
 
 
 
@@ -158,11 +159,11 @@ p.val4 <- pchisq(teststat4, df = 1, lower.tail = FALSE)
 ## use regression output: Non-B
 # visualize
 par(mar=c(5.1, 5.1, 4.1, 16.1), xpd=TRUE)
-termplot(mod1,lwd.term=2, las=1, ylim= c(-4,4),xlabs = " ", ylabs = " ", col.term ="green", se = F, col.se= "lightgreen", lwd.se =  0.4)
+termplot(mod1,lwd.term=2, las=1, ylim= c(-4,4),xlabs = " ", ylabs = " ", col.term ="violet", se = F, col.se= "violet", lwd.se =  0.4)
 par(new=TRUE)
 termplot(s4,se = F, lwd.term=2, las=1, ylim= c(-4,4),xlabs = " ", ylabs = " ", col.term ="navyblue",col.se = "navy", lwd.se = 0.4)
 par(new=TRUE)
-termplot(test, lty.se =0.8, las=1, ylim= c(-4,4),xlabs = " ", ylabs = " ",col.term ="steelblue",lwd.term=2)
+termplot(logistic, lty.se =0.8, las=1, ylim= c(-4,4),xlabs = " ", ylabs = " ",col.term ="steelblue",lwd.term=2)
 # abline(model, col = "orange", lwd = 1, ylim= c(-4,4), xlim = c(1,15))
 # segments(x0=1987,y0= -4.3,x1=2020,y1=-0.15,col="red", lwd = 2)
 segments(x0=1981.6,y0=0,x1=2020.4,y1=0,col="black", lwd=2,lty=2 )
@@ -179,116 +180,113 @@ legend(par("usr")[2],par("usr")[4],
          "compare to ethnicity model","LR > 10, p-value < 2.2e-16 ***"),
        fill= c("white", "steelblue",
                "white", "navyblue",
-               "white", "green",
+               "white", "violet",
                "white", "white","white","white","steelblue",
                "white","navyblue",
-               "white","green","white"),
+               "white","violet","white"),
        border = c("white", "steelblue",
                   "white", "navyblue",
-                  "white", "green",
+                  "white", "violet",
                   "white", "white","white","white","steelblue",
                   "white","navyblue",
-                  "white","green","white"),
+                  "white","violet","white"),
        cex = 0.8, bty="n")
 
 
 ###### For the publication
 
 par(mar=c(5.1, 5.1, 4.1, 16.1), xpd=TRUE)
-termplot(s4,se = F, lwd.term=2, las=1, ylim= c(-4,4),xlabs = " ", ylabs = " ", col.term ="firebrick4",col.se = "navy", lwd.se = 0.4)
+termplot(s4,se = F, lwd.term=2, las=1, ylim= c(-4,4),xlabs = " ", ylabs = " ", col.term ="navyblue",col.se = "navy", lwd.se = 0.4)
 par(new=TRUE)
-termplot(test, lty.se =0.8, las=1, ylim= c(-4,4),xlabs = " ", ylabs = " ",col.term ="indianred",lwd.term=2)
+termplot(logistic, lty.se =0.8, las=1, ylim= c(-4,4),xlabs = " ", ylabs = " ",col.term ="steelblue",lwd.term=2)
 segments(x0=1981.6,y0=0,x1=2020.4,y1=0,col="black", lwd=2,lty=2 )
 mtext(side = 1, text = c("Year of HIV Diagnosis"), line = 3, cex=1.5)
 mtext(side = 2,  text = c("Log-Odds of", "Having HIV-1 Non-B Subtype "), line = c(3.5,2.5), cex= 1.5)
-legend(par("usr")[2],par("usr")[4], 
+legend(par("usr")[2]-0.4,par("usr")[4]+1.2, 
        c("",
          "univariable (Year of Diagnosis)", "logistic regression, df = 1", 
          "univariable (Year of Diagnosis)","B-spline regression, df = 4", 
-         "","", "",
-         " "," ",
+         " ",
          "compare to null model","LR > 10, p-value < 2.2e-16 ***",
-         "compare to null model","LR > 10 , p-value < 2.2e-16 ***", 
-         "compare models","LR = 9.90, p-value = 0.02 *"),
-       fill= c("white", "indianred",
-               "white", "firebrick4",
-               "white", "white",
-               "white", "white","white","white","indianred",
-               "white","firebrick4",
+         "compare to null model","LR > 10, p-value < 2.2e-16 ***", 
+         "compare models","LR > 10, p-value < 2.2e-16 ***"),
+       fill= c("white", "steelblue",
+               "white", "navyblue",
+               "white", "white","steelblue",
+               "white","navyblue",
                "white","black","white"),
-       border = c("white", "indianred",
-                  "white", "firebrick4",
-                  "white", "white",
-                  "white", "white","white","white","indianred",
-                  "white","firebrick4",
+       border = c("white", "steelblue",
+                  "white", "navyblue",
+                  "white", "white","steelblue",
+                  "white","navyblue",
                   "white","black","white"),
-       cex = 0.8, bty="n")
+       cex = 1.2, bty="n")
 
 
 
 
 ###########
-
-par(mar=c(5.1, 5.1, 4.1, 16.1), xpd=TRUE)
-termplot(test, lty.se =0.8, las=1, ylim= c(-4,4),xlabs = " ", ylabs = " ",col.term ="indianred",lwd.term=2)
-mtext(side = 1, text = c("Year of HIV Diagnosis"), line = 3, cex=1.5)
-mtext(side = 2,  text = c("Log-Odds of", "Having HIV-1 Non-B Subtype "), line = c(3.5,2.5), cex= 1.5)
-segments(x0=1981.6,y0=0,x1=2020.4,y1=0,col="black", lwd=2,lty=2 )
-legend(par("usr")[2],par("usr")[4], 
-       c("",
-         "univariable (Year of Diagnosis)", "logistic regression, df = 1", "",
-         "", "",
-         "","",
-         " "," "," ",
-         "",
-         "", 
-         ""),
-       fill= c("white", "indianred",
-               "white", "white",
-               "white", "white",
-               "white", "white","white","white","white",
-               "white","white",
-               "white","white","white"),
-       border = "white",
-       cex = 1, bty="n")
-par(new=TRUE)
-termplot(s4,se = F, lwd.term=2, las=1, ylim= c(-4,4),xlabs = " ", ylabs = " ", col.term ="firebrick4",col.se = "navy", lwd.se = 0.4)
-legend(par("usr")[2],par("usr")[4], 
-       c("",
-         " ", "", "",
-         "univariable (Year of Diagnosis)","B-spline regression, df = 4", 
-         " "," "," ",
-         "",
-         "", 
-         ""),
-       fill= c("white", "indianred", "white",
-               "white", "firebrick4",
-               "white", "white",
-               "white", "white","white","white","white",
-               "white","white",
-               "white","white","white"),
-       border = "white",
-       cex = 1, bty="n")
-legend(par("usr")[2],par("usr")[4], 
-       c("",
-         "", "", 
-         "",
-         "", "",
-         " "," "," ",
-         "compare to null model","LR > 10, p-value < 2.2e-16 ***", "",
-         "compare to null model","LR > 10 , p-value < 2.2e-16 ***", "",
-         "compare models","LR = 9.90, p-value = 0.02 *"),
-       fill= c("white", "indianred", "white",
-               "white", "firebrick4",
-               "white", "white","white","white","indianred","white",
-               "white","firebrick4",
-               "white","white","white"),
-       border = c("white", "indianred", "white",
-                  "white", "firebrick4",
-                  "white", "white","white","white","indianred","white",
-                  "white","firebrick4",
-                  "white","white","black"),
-       cex = 1, bty="n")
+# 
+# par(mar=c(5.1, 5.1, 4.1, 16.1), xpd=TRUE)
+# termplot(logistic, lty.se =0.8, las=1, ylim= c(-4,4),xlabs = " ", ylabs = " ",col.term ="indianred",lwd.term=2)
+# mtext(side = 1, text = c("Year of HIV Diagnosis"), line = 3, cex=1.5)
+# mtext(side = 2,  text = c("Log-Odds of", "Having HIV-1 Non-B Subtype "), line = c(3.5,2.5), cex= 1.5)
+# segments(x0=1981.6,y0=0,x1=2020.4,y1=0,col="black", lwd=2,lty=2 )
+# legend(par("usr")[2],par("usr")[4], 
+#        c("",
+#          "univariable (Year of Diagnosis)", "logistic regression, df = 1", "",
+#          "", "",
+#          "","",
+#          " "," "," ",
+#          "",
+#          "", 
+#          ""),
+#        fill= c("white", "indianred",
+#                "white", "white",
+#                "white", "white",
+#                "white", "white","white","white","white",
+#                "white","white",
+#                "white","white","white"),
+#        border = "white",
+#        cex = 1, bty="n")
+# par(new=TRUE)
+# termplot(s4,se = F, lwd.term=2, las=1, ylim= c(-4,4),xlabs = " ", ylabs = " ", col.term ="firebrick4",col.se = "navy", lwd.se = 0.4)
+# legend(par("usr")[2],par("usr")[4], 
+#        c("",
+#          " ", "", "",
+#          "univariable (Year of Diagnosis)","B-spline regression, df = 4", 
+#          " "," "," ",
+#          "",
+#          "", 
+#          ""),
+#        fill= c("white", "indianred", "white",
+#                "white", "firebrick4",
+#                "white", "white",
+#                "white", "white","white","white","white",
+#                "white","white",
+#                "white","white","white"),
+#        border = "white",
+#        cex = 1, bty="n")
+# legend(par("usr")[2],par("usr")[4], 
+#        c("",
+#          "", "", 
+#          "",
+#          "", "",
+#          " "," "," ",
+#          "compare to null model","LR > 10, p-value < 2.2e-16 ***", "",
+#          "compare to null model","LR > 10 , p-value < 2.2e-16 ***", "",
+#          "compare models","LR = 9.90, p-value = 0.02 *"),
+#        fill= c("white", "indianred", "white",
+#                "white", "firebrick4",
+#                "white", "white","white","white","indianred","white",
+#                "white","firebrick4",
+#                "white","white","white"),
+#        border = c("white", "indianred", "white",
+#                   "white", "firebrick4",
+#                   "white", "white","white","white","indianred","white",
+#                   "white","firebrick4",
+#                   "white","white","black"),
+#        cex = 1, bty="n")
 
 
 
@@ -313,7 +311,7 @@ regAE <- glm(AEs ~ diag_year , family = "binomial",data = data); summary(regAE)
 # regAE$coefficients
 # (Intercept)    diag_year 
 # -304.0886388    0.1493071 
-logistic.display(regAE) #1.11 (1.09,1.14)
+logistic.display(regAE) #1.05 (1.04,1.07)
 splineAE <- glm(AEs ~ bs(diag_year, degree = 2, df=2), family = "binomial",data = data); summary(splineAE)
 attr(terms(splineAE), "predvars"); termplot(splineAE, se=T)
 # list(subtype, bs(diag_year, degree = 2L, knots = c(`33.33333%` = 2006, 
@@ -322,7 +320,7 @@ attr(terms(splineAE), "predvars"); termplot(splineAE, se=T)
 regAG <- glm(AGs ~ diag_year , family = "binomial",data = data); summary(regAG)
 # exp(regAG$coefficients[2]) # 1.161029 
 # exp(regAE$coefficients)
-logistic.display(regAG) #1.16 (1.11,1.22) 
+logistic.display(regAG) #1.07 (1.06,1.09) 
 # exp(confint(regAG))
 # regAG$coefficients
 # (Intercept)    diag_year 
@@ -335,7 +333,7 @@ regG <- glm(Gs ~ diag_year , family = "binomial",data = data); summary(regG)
 # regG$coefficients 
 # (Intercept)     diag_year 
 # -169.43452268    0.08157072  
-logistic.display(regG) #1.08 (1.01,1.17)
+logistic.display(regG) #1.06 (1.03,1.08)
 splineG <- glm(Gs ~ bs(diag_year, degree = 2, df=2), family = "binomial",data = data); summary(splineG)
 attr(terms(splineG), "predvars"); termplot(splineG, se=T)
 
@@ -344,7 +342,7 @@ regF <- glm(Fs ~ diag_year , family = "binomial",data = data); summary(regF)
 # regF$coefficients
 # (Intercept)    diag_year 
 # -212.0825502    0.1035243 
-logistic.display(regF) #1.11 (1.07,1.15)
+logistic.display(regF) #1.03 (1.01,1.06)
 splineF <- glm(Fs ~ bs(diag_year, degree = 2, df=2), family = "binomial",data = data); summary(splineF)
 attr(terms(splineF), "predvars"); termplot(splineF, se=T) #best increase
 
@@ -353,7 +351,7 @@ regC <- glm(Cs ~ diag_year , family = "binomial",data = data); summary(regC)
 # regC$coefficients
 # (Intercept)    diag_year 
 # -274.3927423    0.1343025 
-logistic.display(regC) #1.14 (1.08,1.21)
+logistic.display(regC) #1.05 (1.04,1.07)
 splineC <- glm(Cs ~ bs(diag_year, degree = 2, df=2), family = "binomial",data = data); summary(splineC)
 attr(terms(splineC), "predvars"); termplot(splineC, se=T) #quiet staty 
 
@@ -362,52 +360,13 @@ regA <- glm(As ~ diag_year , family = "binomial",data = data); summary(regA)
 # regA$coefficients
 # (Intercept)    diag_year 
 # -302.8159460    0.1486854 
-logistic.display(regA) #1.16 (1.11,1.21)
+logistic.display(regA) #1.01 (1.00,1.02)
 splineA <- glm(As ~ bs(diag_year, degree = 2, df=2), family = "binomial",data = data); summary(splineA)
 attr(terms(splineA), "predvars"); termplot(splineA, se=T) #increase
 
 
 
 #### spline regression:
-par(mar=c(5.1, 5.1, 4.1, 16.1), xpd=TRUE)
-termplot(splineAE,lwd.term=3, las=1, ylim= c(-10,4), xlabs = " ", ylabs = " ", col.term ="cyan4", se = F, col.se= "cyan4", lwd.se =  0.4)
-par(new=TRUE)
-termplot(splineAG,lwd.term=3, las=1,ylim= c(-10,4), xlabs = " ", ylabs = " ", col.term ="darkorange3",col.se = "darkorange3", se = F, lwd.se =  0.4)
-par(new=TRUE)
-termplot(splineA,lwd.term=3, las=1, ylim= c(-10,4), xlabs = " ", ylabs = " ", col.term ="olivedrab",col.se = "olivedrab", se = F, lwd.se =  0.4)
-par(new=TRUE)
-termplot(splineC,lwd.term=3, las=1, ylim= c(-10,4), xlabs = " ", ylabs = " ", col.term ="violetred2",col.se = "violetred2", se = F, lwd.se =  0.4)
-par(new=TRUE)
-termplot(splineF,lwd.term=3, las=1, ylim= c(-10,4), xlabs = " ", ylabs = " ", col.term ="darkgoldenrod2",col.se = "darkgoldenrod2", se = F, lwd.se =  0.4)
-par(new=TRUE)
-termplot(splineG,lwd.term=3, las=1, ylim= c(-10,4), xlabs = " ", ylabs = " ", col.term ="mediumpurple3",col.se = "mediumpurple3", se = F, lwd.se =  0.4)
-mtext(side = 1, text = c("Year of HIV Diagnosis"), line = 3, cex=1.5)
-mtext(side = 2,  text = c("Log-Odds of", "Having HIV-1 Non-B Subtype "), line = c(3.5,2.5), cex= 1.5)
-segments(x0=1981.6,y0=0,x1=2020.4,y1=0,col="black", lwd=2,lty=2 )
-legend(par("usr")[2],par("usr")[4], 
-       c("",
-         "CRF01_AE", "",
-         "CRF02_AG", "",
-         "A","",
-         "C","",
-         "F","",
-         "G"),
-       fill= c("white", "cyan4",
-               "white", "darkorange3",
-               "white", "olivedrab",
-               "white", "violetred2",
-               "white","darkgoldenrod2",
-               "white","mediumpurple3"),
-       border = c("white", "cyan4",
-                  "white", "darkorange3",
-                  "white", "olivedrab",
-                  "white", "violetred2",
-                  "white","darkgoldenrod2",
-                  "white","mediumpurple3"),
-       cex = 1.2, bty="n")
-
-
-
 par(mar=c(5.1, 5.1, 4.1, 16.1), xpd=TRUE)
 termplot(splineAE,lwd.term=3, las=1, ylim= c(-10,4), xlabs = " ", ylabs = " ", col.term ="darkorange3", se = F, col.se= "darkorange3", lwd.se =  0.4)
 par(new=TRUE)
@@ -423,7 +382,7 @@ termplot(splineG,lwd.term=3, las=1, ylim= c(-10,4), xlabs = " ", ylabs = " ", co
 mtext(side = 1, text = c("Year of HIV Diagnosis"), line = 3, cex=1.5)
 mtext(side = 2,  text = c("Log-Odds of", "Having HIV-1 Non-B Subtype "), line = c(3.5,2.5), cex= 1.5)
 segments(x0=1981.6,y0=0,x1=2020.4,y1=0,col="black", lwd=2,lty=2 )
-legend(par("usr")[2],par("usr")[4], 
+legend(par("usr")[2]+2.2 ,par("usr")[4]+1.2, 
        c("",
          "CRF01_AE", "",
          "CRF02_AG", "",
@@ -444,6 +403,7 @@ legend(par("usr")[2],par("usr")[4],
                   "white","olivedrab",
                   "white","mediumpurple3"),
        cex = 1.2, bty="n")
+
 
 
 #### logistic regression:
@@ -462,7 +422,7 @@ termplot(regG,lwd.term=2, las=1, ylim= c(-4,4), xlabs = " ", ylabs = " ", col.te
 mtext(side = 1, text = c("Year of HIV Diagnosis"), line = 3, cex=1.5)
 mtext(side = 2,  text = c("Log-Odds of", "Having HIV-1 Non-B Subtype "), line = c(3.5,2.5), cex= 1.5)
 segments(x0=1981.6, y0=0, x1=2020.4, y1=0, col="black", lwd=2, lty=2)
-legend(par("usr")[2],par("usr")[4], 
+legend(par("usr")[2]+2.2 ,par("usr")[4]+1.2, 
        c("",
          "CRF01_AE", "",
          "CRF02_AG", "",
@@ -483,161 +443,6 @@ legend(par("usr")[2],par("usr")[4],
                   "white","olivedrab",
                   "white","mediumpurple3"),
        cex = 1.2, bty="n")
-
-
-par(mar=c(5.1, 5.1, 4.1, 16.1), xpd=TRUE)
-termplot(regAE,lwd.term=2, las=1, ylim= c(-4,4), xlabs = " ", ylabs = " ", col.term ="cyan4", se = F, col.se= "cyan4", lwd.se =  0.4)
-par(new=TRUE)
-termplot(regAG,lwd.term=3, las=1, ylim= c(-4,4), xlabs = " ", ylabs = " ", col.term ="darkorange3",col.se = "darkorange3", se = F, lwd.se =  0.4)
-par(new=TRUE)
-termplot(regA,lwd.term=2, pch=10,las=1, ylim= c(-4,4), xlabs = " ", ylabs = " ", col.term ="olivedrab",col.se = "olivedrab", se = F, lwd.se =  0.4)
-par(new=TRUE)
-termplot(regC,lwd.term=2, las=1, ylim= c(-4,4), xlabs = " ", ylabs = " ", col.term ="violetred2",col.se = "violetred2", se = F, lwd.se =  0.4)
-par(new=TRUE)
-termplot(regF,lwd.term=2, las=1, ylim= c(-4,4), xlabs = " ", ylabs = " ", col.term ="darkgoldenrod2",col.se = "darkgoldenrod2", se = F, lwd.se =  0.4)
-par(new=TRUE)
-termplot(regG,lwd.term=2, las=1, ylim= c(-4,4), xlabs = " ", ylabs = " ", col.term ="mediumpurple3",col.se = "mediumpurple3", se = F, lwd.se =  0.4)
-mtext(side = 1, text = c("Year of HIV Diagnosis"), line = 3, cex=1.5)
-mtext(side = 2,  text = c("Log-Odds of", "Having HIV-1 Non-B Subtype "), line = c(3.5,2.5), cex= 1.5)
-segments(x0=1981.6, y0=0, x1=2020.4, y1=0, col="black", lwd=2, lty=2)
-legend(par("usr")[2],par("usr")[4], 
-       c("",
-         "CRF01_AE", "",
-         "CRF02_AG", "",
-         "A","",
-         "C","",
-         "F","",
-         "G"),
-       fill= c("white", "cyan4",
-               "white", "darkorange3",
-               "white", "olivedrab",
-               "white", "violetred2",
-               "white","darkgoldenrod2",
-               "white","mediumpurple3"),
-       border = c("white", "cyan4",
-                  "white", "darkorange3",
-                  "white", "olivedrab",
-                  "white", "violetred2",
-                  "white","darkgoldenrod2",
-                  "white","mediumpurple3"),
-       cex = 1.2, bty="n")
-
-
-
-###############################################################
-###############################################################
-###############################################################
-data$diag_year_cat <- NA
-data$diag_year_cat[data$diag_year <1993] <- 1
-data$diag_year_cat[data$diag_year >= 1993 & data$diag_year<2008] <- 2
-data$diag_year_cat[data$diag_year >= 2008] <- 3
-data$diag_year_cat <- as.factor(data$diag_year_cat)
-#data$diag_year_cat <- factor(data$diag_year_cat, levels = c("<1993","1993-2008",">2008"))
-log_reg_diag_year_cat <- glm(data$nonB ~ data$diag_year_cat, family = "binomial"); summary(log_reg_diag_year_cat)
-lines(data$nonB, fitted(log_reg_diag_year_cat), col = "red", lwd=3)
-
-
-diag_year <-data$diag_year
-nonB <- data$nonB
-#Distribution Summaries for Predictor Variables:
-dd <- datadist(nonB,diag_year)
-options(datadist="dd"); dd
-## used by summary, plot, survplot, sometimes predict:
-# nonB diag_year
-# Low:effect         0      1993
-# Adjust to          0      2001
-# High:effect        1      2008
-# Low:prediction     0      1983
-# High:prediction    1      2019
-# Low                0      1982
-# High               1      2019
-# 
-# Values:
-#   
-#   nonB : 0 1 
-
-splines3<- lrm(nonB ~  rcs(diag_year,3), data = data, x=TRUE,y=TRUE); splines3
-#lrm: Fit binary and proportional odds ordinal logistic regression models using maximum likelihood estimation or penalized maximum likelihood estimation
-#rcs:set up special attributes (such as knots and nonlinear term indicators) that are carried through to fits 
-# attr(,"parms")
-# [1] 1988 2001 2013
-
-summary(splines3, diag_year = c( 2001,1988))
-# Factor      Low  High Diff. Effect  S.E.    Lower 0.95 Upper 0.95
-# diag_year   2001 1988 -13   -1.5451 0.24467 -2.02460   -1.06550  
-# Odds Ratio 2001 1988 -13    0.2133      NA  0.13205    0.34455  
-summary(splines3, diag_year = c(2001, 2013))
-# Factor      Low  High Diff. Effect S.E.    Lower 0.95 Upper 0.95
-# diag_year   2001 2013 12    1.5672 0.11102 1.3496     1.7848    
-# Odds Ratio 2001 2013 12    4.7932      NA 3.8559     5.9584 
-
-
-
-
-################################
-### OR of having non-B with splines
-par(mfrow=c(1,1))
-par(new=FALSE)
-FUN_diag_splines <- function(i){
-  sum_year<- summary(splines3, diag_year = c(2001, i))
-  OR_year <- sum_year[2,4] #get the effect: OR
-  plot(i, OR_year, ylim= c(0.1,8),log = "y",pch = 16, cex = .9,
-       las=1, xlim = c(1982,2019), ylab = "", xlab = "")
-  par(new=TRUE)
-}
-sapply(data$diag_year[!is.na(data$diag_year)], FUN_diag_splines)
-title( ylab = c("Having Non-B Subtype [OR]"), xlab = "Year of HIV Diagnosis", line = 3)
-segments(x0=1981.6,y0=1,x1=2020.4,y1=1,col="lightsteelblue3", lwd=2)
-
-################################
-
-
-
-
-
-#replot
-#37/ 4334 = 0.008537148
-xv <- seq(min(data$diag_year), max(data$diag_year),0.008539)
-yv <- predict(model,list(diag_year=xv), type="response")
-lines(xv,yv, col="red")
-detach(data)
-
-plot(data$diag_year, data$nonB,
-     ylim=c(-0.25,1.25))
-noise = 0.03*rnorm(data$diag_year)
-yobs = data$nonB + noise
-points(data$diag_year,yobs, col="red")
-
-
-### 3. Fit a linear regression model and plot the data with the fitted result
-fit <- lm(nonB ~ diag_year, data = data)
-plot(data$diag_year, data$nonB,
-     xlab="Diagnosis Year",
-     ylab= "Subtype", 
-     main= "HIV-1 B or Non-B Subtype")
-abline(fit, col = "red", lwd = 3)
-plot(fit)
-## assumtions not met! 
-
-
-### 4. Fit a polynomial regression models with degrees 2, 3, and 10 and visualize as before
-m1 <- lm(nonB ~ poly(diag_year, degree = 2, row =T), data = data); summary(m1)
-plot(data$diag_year, data$nonB,
-     xlab="Diagnosis Year",
-     ylab= "Subtype", 
-     main= "HIV-1 B or Non-B Subtype")
-lines(data$diag_year, fitted(m1), col = "red", lwd=3)
-
-
-m2 <- lm(nonB ~ poly(diag_year, degree = 3, row = T), data = data); summary(m2)
-plot(data$diag_year, data$nonB,
-     xlab="Diagnosis Year",
-     ylab= "Subtype", 
-     main= "HIV-1 B or Non-B Subtype")
-lines(data$diag_year,fitted(m2), col = "red", lwd=3)
-#slightly better
-
-log_reg_diagnosed_year <- glm(data$nonB~ data$diag_year, family = "binomial");  summary(log_reg_diagnosed_year)
 
 
 
